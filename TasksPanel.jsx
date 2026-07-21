@@ -8,6 +8,29 @@ import { mono, display, inputClass, pillGradientStyle } from "./theme.js";
 
 const isTaskDone = (t) => (t.subtasks && t.subtasks.length > 0 ? t.subtasks.every((s) => s.done) : !!t.done);
 
+// One-time migration: the sidebar rebuild moved tasks from key "pers-tasks" to
+// "pers-tasks-v2" with a richer shape. Pull any old tasks forward so nothing is lost.
+function loadTasksWithMigration() {
+  const current = load("pers-tasks-v2", null);
+  if (current !== null) return current;
+
+  const old = load("pers-tasks", []);
+  const migrated = old.map((t) => ({
+    id: t.id || uid(),
+    text: t.text || "",
+    bucket: t.bucket || "today",
+    dueDate: t.dueDate || null,
+    reportTo: t.reportTo || "",
+    helpFrom: t.helpFrom || "",
+    docLink: t.docLink || "",
+    done: !!t.done,
+    subtasks: t.subtasks || [],
+    createdAt: t.createdAt || Date.now(),
+  }));
+  save("pers-tasks-v2", migrated);
+  return migrated;
+}
+
 function AddTaskForm({ onAdd }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -220,7 +243,7 @@ function CalendarView({ tasks, selectedDate, onSelectDate }) {
 }
 
 export default function TasksPanel() {
-  const [tasks, setTasks] = useState(() => load("pers-tasks-v2", []));
+  const [tasks, setTasks] = useState(() => loadTasksWithMigration());
   const [filter, setFilter] = useState("today");
   const [view, setView] = useState("list");
   const [selectedDate, setSelectedDate] = useState(null);
